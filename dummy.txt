@@ -1,0 +1,7 @@
+q_hidden	128.0
+p_hidden	64.0
+q_lr	0.0001
+p_lr	0.001
+theta	0.01
+eps_exp	3.0
+k	4.0

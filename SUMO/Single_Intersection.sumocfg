@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 08/05/20 21:10:29 by Eclipse SUMO GUI Version 1.6.0
+-->
+
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="Single_Intersection.net.xml"/>
+        <route-files value="Single_Intersection.rou.xml"/>
+    </input>
+
+    <output>
+        <tripinfo-output value="Single_Intersection.xml"/>
+    </output>
+
+</configuration>

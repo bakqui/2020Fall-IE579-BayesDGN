@@ -1,0 +1,10 @@
+{
+    "python.pythonPath": "/home/mjpark/anaconda3/envs/RL/bin/python",
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [
+        "--max-line-length=120",
+        "--ignore=E226, E261, E302",
+    ],
+    "python.linting.enabled": true
+}
