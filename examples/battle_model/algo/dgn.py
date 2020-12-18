@@ -1,0 +1,133 @@
+import os
+import random
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from dgn_tools import GraphBuffer, MultiHeadDotGATLayer
+from torch.optim import Adam
+
+class ObsEncoder(nn.Module):
+    def __init__(self, in_dim, o_dim=128, h_dim=512):
+        super(ObsEncoder, self).__init__()
+        self.fc1 = nn.Linear(in_dim, h_dim)
+        self.fc2 = nn.Linear(h_dim, o_dim)
+
+    def forward(self, o):
+        o = F.relu(self.fc1(o))
+        o = F.relu(self.fc2(o))
+        return o
+
+class DGN_Conv(nn.Module):
+    def __init__(self, obs_dim, h_dim=128, num_heads=8,
+                 target=False):
+        super(DGN_Conv, self).__init__()
+        self.encoder = ObsEncoder(in_dim=obs_dim, o_dim=h_dim)
+        self.conv1 = MultiHeadDotGATLayer(h_dim, h_dim, num_heads)
+        self.conv2 = MultiHeadDotGATLayer(h_dim, h_dim, num_heads)
+        self.target = target
+
+    def forward(self, graph):
+        obs = graph.ndata['obs']
+        z1 = self.encoder(obs)
+        z2, _ = self.conv1(graph, z1)
+        z3, alpha = self.conv2(graph, z2)
+        out = torch.cat([z1, z2, z3], dim=1)
+        if self.target:
+            return out
+        return out, alpha
+
+class DGNAgent(nn.Module):
+    def __init__(self, n_agents, obs_dim, act_dim, h_dim=128,
+                 num_heads=8, gamma=0.96, batch_size=10,
+                 buffer_size=2*1e5, epsilon=0.6, epsilon_min=0.01,
+                 decay_rate=0.996, lr=1e-4, neighbors=3,
+                 lamb=0.03, beta=0.01, *args, **kwargs):
+        super(DGNAgent, self).__init__()
+        self.conv_net = DGN_Conv(obs_dim, h_dim, num_heads)
+        self.target_conv = DGN_Conv(obs_dim, h_dim, num_heads, target=True)
+        self.q_net = nn.Linear(3*h_dim, act_dim)
+        self.target_q = nn.Linear(3*h_dim, act_dim)
+        self.target_conv.load_state_dict(self.conv_net.state_dict())
+        self.target_q.load_state_dict(self.q_net.state_dict())
+        self.optimizer = Adam(self.conv_net.parameters()+self.q_net.parameters(),
+                              lr=lr)
+        self.beta = beta
+        self.gamma = gamma
+        self.buffer = GraphBuffer(buffer_size)
+        self.batch_size = batch_size
+
+        self.epsilon = epsilon
+        self.epsilon_min = epsilon_min
+        self.decay_rate = decay_rate
+
+        self.n_agents = n_agents
+        self.n_act = act_dim
+        self.n_neighbor = neighbors
+        self.lamb = lamb
+
+        self._new_add = 0
+
+    def act(self, graph):
+        if random.random() < self.epsilon:
+            action = torch.randint(0, self.n_act, size=(self.n_agents,))
+        else:
+            q_value = self.q_net(graph)
+            action = q_value.argmax(dim=-1).detach()
+        self.epsilon = max(self.epsilon*self.decay_rate, self.epsilon_min)
+
+        return action.numpy()
+
+    def get_q(self, graph):
+        z, weight = self.conv_net(graph)
+        q = self.q_net(z)
+        return q, weight
+
+    def get_target(self, graph):
+        z = self.target_conv(graph)
+        q = self.target_q(z)
+        return q
+
+    def save_samples(self, g, a, r, n_g, t):
+        self.buffer.push(g, a, r, n_g, t)
+        self._new_add += 1
+
+    def train(self):
+        batch_num = self._new_add * 2 // self.batch_size
+        for _ in range(batch_num):
+            state, act, reward, n_state, done = self.buffer.sample(self.batch_size)
+            curr_qs, curr_weight = self.get_qs(state)
+            selected_qs = curr_qs.gather(1, act).reshape(-1)
+            next_qs = self.get_target(n_state).max(dim=1)[0].detach()
+            target = reward + self.gamma * next_qs * (1 - done)
+
+            _, next_weight = self.get_qs(n_state)
+            KL = (curr_weight * torch.log(curr_weight/next_weight)).sum(-1)
+
+            loss = F.mse_loss(selected_qs, target) + self.lamb*KL.mean()
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            self.update()
+        self._new_add = 0
+
+    def update(self):
+        for target, param in zip(self.target_conv.parameters(),
+                                 self.conv_net.parameters()):
+            target.data = (1-self.beta)*target.data + self.beta*param.data
+
+        for target, param in zip(self.q_net.parameters(),
+                                 self.target_q.parameters()):
+            target.data = (1-self.beta)*target.data + self.beta*param.data
+
+    def save(self, dir_path, step=0):
+        file_path = os.path.join(dir_path, "dgn_{}".format(step))
+        torch.save({
+            'conv_state_dict': self.conv_net.state_dict(),
+            'q_state_dict': self.q_net.state_dict()}, file_path)
+
+    def load(self, dir_path, step=0):
+        file_path = os.path.join(dir_path, "dgn_{}".format(step))
+        checkpoint = torch.load(file_path)
+        self.q_net.load_state_dict(checkpoint['q_state_dict'])
+        self.conv_net.load_state_dict(checkpoint['conv_state_dict'])
