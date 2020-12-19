@@ -69,7 +69,7 @@ class DGNAgent(nn.Module):
             q_value = self.q_net(graph)
             action = q_value.argmax(dim=-1).detach()
 
-        return action.numpy()
+        return action.numpy().astype(int)
 
     def get_q(self, graph):
         z, weight = self.conv_net(graph)
