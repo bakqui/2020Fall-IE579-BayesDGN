@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dgn_tools import GraphBuffer, BayesMultiHeadGATLayer
+from .dgn_tools import GraphBuffer, BayesMultiHeadGATLayer
 from torch.optim import Adam
 
 class ObsEncoder(nn.Module):
