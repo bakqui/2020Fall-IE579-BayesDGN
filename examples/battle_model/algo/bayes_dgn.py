@@ -76,7 +76,7 @@ class BayesDGNAgent(nn.Module):
         self.n_act = act_dim
         self.n_neighbor = neighbors
         self.lamb_temp = lamb
-        self.rho = rho
+        self.rho = torch.tensor(rho).type(torch.float32)
         self.t = 0
 
         self._new_add = 0
