@@ -80,7 +80,8 @@ class DotGATLayer(nn.Module):
         g.update_all(self.message_func, self.reduce_func)
         h = g.ndata.pop('h')
         # alpha = g.ndata.pop('alpha')
-        dummy = g.ndata.pop('z')
+        g.ndata.pop('z')
+        g.edata.pop('e')
         # return h, alpha
         return h
 
@@ -156,7 +157,9 @@ class BayesGATLayer(nn.Module):
         self.KL_backward = g.ndata.pop('kl').mean()
         h = g.ndata.pop('h')
         alpha = g.ndata.pop('alpha')
-        dummy = g.ndata.pop('z')
+        g.ndata.pop('z')
+        g.edata.pop('e')
+        g.edata.pop('p')
         return h, alpha
 
 class BayesMultiHeadGATLayer(nn.Module):
