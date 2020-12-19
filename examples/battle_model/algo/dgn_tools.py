@@ -36,13 +36,13 @@ class GraphBuffer(object):
         actions = [torch.LongTensor(sample[1]) for sample in samples]
         rewards = [torch.Tensor(sample[2]) for sample in samples]
         next_graphs = [sample[3] for sample in samples]
-        dones = [sample[4] for sample in samples]
+        dones = [torch.Tensor(sample[4]) for sample in samples]
 
         ret_graph = dgl.batch(graphs)
         ret_action = torch.cat(actions).reshape(-1, 1)
         ret_reward = torch.cat(rewards).reshape(-1)
         ret_next_graph = dgl.batch(next_graphs)
-        ret_dones = torch.Tensor(dones).reshape(-1)
+        ret_dones = torch.cat(dones).reshape(-1)
 
         return ret_graph, ret_action, ret_reward, ret_next_graph, ret_dones
 

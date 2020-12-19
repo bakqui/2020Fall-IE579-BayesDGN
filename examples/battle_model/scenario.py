@@ -113,6 +113,7 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
 
         # simulate one step
         done = env.step()
+        dones = 
 
         for i in range(n_group):
             rewards[i] = env.get_reward(handles[i])
@@ -125,7 +126,7 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
 
         buffer = {
             'g': before_state[0], 'a': acts[0], 'r': rewards[0],
-            'n_g': state[0], 't': done
+            'n_g': state[0], 't': ~alives[i]
         }
 
         # save experience
