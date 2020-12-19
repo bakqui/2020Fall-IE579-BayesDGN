@@ -33,7 +33,7 @@ class GraphBuffer(object):
         samples = random.sample(self.memory, batch_size)
 
         graphs = [sample[0] for sample in samples]
-        actions = [torch.Tensor(sample[1]) for sample in samples]
+        actions = [torch.LongTensor(sample[1]) for sample in samples]
         rewards = [torch.Tensor(sample[2]) for sample in samples]
         next_graphs = [sample[3] for sample in samples]
         dones = [sample[4] for sample in samples]
