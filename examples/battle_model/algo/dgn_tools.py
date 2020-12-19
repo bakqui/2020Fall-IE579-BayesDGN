@@ -71,16 +71,18 @@ class DotGATLayer(nn.Module):
         alpha = F.softmax(s, dim=1)
         v = self.fc_v(nodes.mailbox['z'])
         h = torch.sum(alpha * v, dim=1)
-        return {'h': h, 'alpha': alpha.squeeze()}
+        # return {'h': h, 'alpha': alpha.squeeze()}
+        return {'h': h}
 
     def forward(self, g, z):
         g.ndata['z'] = z
         g.apply_edges(self.edge_attention)
         g.update_all(self.message_func, self.reduce_func)
         h = g.ndata.pop('h')
-        alpha = g.ndata.pop('alpha')
+        # alpha = g.ndata.pop('alpha')
         dummy = g.ndata.pop('z')
-        return h, alpha
+        # return h, alpha
+        return h
 
 class MultiHeadDotGATLayer(nn.Module):
     def __init__(self, in_dim, out_dim, num_heads):
@@ -92,11 +94,13 @@ class MultiHeadDotGATLayer(nn.Module):
             self.heads.append(DotGATLayer(in_dim, h_dim))
 
     def forward(self, g, h):
-        hs, alphas = map(list, zip(*[head(g, h)
-                                     for head in self.heads]))
-        alpha = torch.stack(alphas).mean(0)
+        # hs, alphas = map(list, zip(*[head(g, h)
+        #                              for head in self.heads]))
+        hs = [head(g, h) for head in self.heads]
+        # alpha = torch.stack(alphas).mean(0)
         h = F.relu(torch.cat(hs, dim=1))
-        return h, alpha
+        # return h, alpha
+        return h
 
 class BayesGATLayer(nn.Module):
     def __init__(self, in_dim, out_dim,
