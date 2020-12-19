@@ -68,7 +68,7 @@ def gen_graph(view, feature, n_neighbor=3):
     g.add_edges(from_idx, to_idx)
 
     # we save observation as the feature of the nodes
-    obs = observation(view, feature)
+    obs = observation(view, feature, n_agents)
     g.ndata['obs'] = torch.Tensor(obs) # shape = (n_agents, view_size**2 + 2)
 
     return g
