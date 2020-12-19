@@ -310,7 +310,7 @@ class Runner(object):
                 print(Color.INFO.format('[INFO] Self-play Updated!\n'))
 
                 print(Color.INFO.format('[INFO] Saving model ...'))
-                
+
                 model_dir0 = self.model_dir + '-0'
                 if not os.path.exists(model_dir0):
                     os.makedirs(model_dir0)
@@ -320,7 +320,7 @@ class Runner(object):
                     os.makedirs(model_dir1)
                 self.models[1].save(model_dir1, it)
 
-                self.summary.write(info['main'], it)
+                self.summary.write(info['main'])
         else:
             print('\n[INFO] {0} \n {1}'.format(info['main'], info['oppo']))
             if info['main']['kill'] > info['oppo']['kill']:
