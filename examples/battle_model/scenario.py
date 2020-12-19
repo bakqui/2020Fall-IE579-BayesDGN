@@ -1,5 +1,4 @@
 import dgl
-import magent
 import math
 import numpy as np
 import random
@@ -74,8 +73,9 @@ def gen_graph(view, feature, n_neighbor=3):
 
     return g
 
-def play(env, n_round, map_size, max_steps, handles, models,
-         print_every, n_neighbor=3, render=False, train=False):
+# self-play (training a model by playing with itself)
+def play(env, n_round, map_size, max_steps, handles, models, eps,
+         print_every, n_neighbor=3, render=False, train=True):
     """play a ground and train"""
     env.reset()
     generate_map(env, map_size, handles)
@@ -93,19 +93,19 @@ def play(env, n_round, map_size, max_steps, handles, models,
     nums = [env.get_num(handle) for handle in handles]
     max_nums = nums.copy()
 
-    eps = models[0].epsilon
     print("\n\n[*] ROUND #{0}, EPS: {1:.2f} NUMBER: {2}".format(n_round, eps, nums))
     mean_rewards = [[] for _ in range(n_group)]
     total_rewards = [[] for _ in range(n_group)]
 
+    # get graph from observation of each group
     for i in range(n_group):
         view, feature = env.get_observation(handles[i])
         state[i] = gen_graph(view, feature, n_neighbor)
 
     while not done and step_ct < max_steps:
-        # take actions for every model
+        # take actions for every group
         for i in range(n_group):
-            acts[i] = models[i].act(graph=state[i])
+            acts[i] = models[i].act(graph=state[i], epsilon=eps)
             before_state[i] = state[i]
 
         for i in range(n_group):
@@ -118,6 +118,7 @@ def play(env, n_round, map_size, max_steps, handles, models,
             rewards[i] = env.get_reward(handles[i])
             alives[i] = env.get_alive(handles[i])
 
+        # next graph
         for i in range(n_group):
             view, feature = env.get_observation(handles[i])
             state[i] = gen_graph(view, feature, n_neighbor)
@@ -127,6 +128,7 @@ def play(env, n_round, map_size, max_steps, handles, models,
             'n_g': state[0], 't': done
         }
 
+        # save experience
         if train:
             models[0].save_samples(**buffer)
 
@@ -152,6 +154,7 @@ def play(env, n_round, map_size, max_steps, handles, models,
         if step_ct % print_every == 0:
             print("> step #{}, info: {}".format(step_ct, info))
 
+    # train model after an episode ends
     if train:
         models[0].train()
 
@@ -162,8 +165,9 @@ def play(env, n_round, map_size, max_steps, handles, models,
     return max_nums, nums, mean_rewards, total_rewards
 
 
-def battle(env, n_round, map_size, max_steps, handles, models, print_every, eps=1.0, render=False, train=False):
-    """play a ground and train"""
+def battle(env, n_round, map_size, max_steps, handles, models, eps,
+           print_every, n_neighbor=3, render=False):
+    """play a ground"""
     env.reset()
     generate_map(env, map_size, handles)
 
@@ -173,30 +177,24 @@ def battle(env, n_round, map_size, max_steps, handles, models, print_every, eps=
     n_group = len(handles)
     state = [None for _ in range(n_group)]
     acts = [None for _ in range(n_group)]
-    ids = [None for _ in range(n_group)]
 
     alives = [None for _ in range(n_group)]
     rewards = [None for _ in range(n_group)]
     nums = [env.get_num(handle) for handle in handles]
     max_nums = nums.copy()
 
-    n_action = [env.get_action_space(handles[0])[0], env.get_action_space(handles[1])[0]]
-
     print("\n\n[*] ROUND #{0}, EPS: {1:.2f} NUMBER: {2}".format(n_round, eps, nums))
     mean_rewards = [[] for _ in range(n_group)]
     total_rewards = [[] for _ in range(n_group)]
 
-    former_act_prob = [np.zeros((1, env.get_action_space(handles[0])[0])), np.zeros((1, env.get_action_space(handles[1])[0]))]
-
     while not done and step_ct < max_steps:
         # take actions for every model
         for i in range(n_group):
-            state[i] = list(env.get_observation(handles[i]))
-            ids[i] = env.get_agent_id(handles[i])
+            view, feature = env.get_observation(handles[i])
+            state[i] = gen_graph(view, feature, n_neighbor)
 
         for i in range(n_group):
-            former_act_prob[i] = np.tile(former_act_prob[i], (len(state[i][0]), 1))
-            acts[i] = models[i].act(state=state[i], prob=former_act_prob[i], eps=eps)
+            acts[i] = models[i].act(graph=state[i], epsilon=eps)
 
         for i in range(n_group):
             env.set_action(handles[i], acts[i])
@@ -207,9 +205,6 @@ def battle(env, n_round, map_size, max_steps, handles, models, print_every, eps=
         for i in range(n_group):
             rewards[i] = env.get_reward(handles[i])
             alives[i] = env.get_alive(handles[i])
-
-        for i in range(n_group):
-            former_act_prob[i] = np.mean(list(map(lambda x: np.eye(n_action[i])[x], acts[i])), axis=0, keepdims=True)
 
         # stat info
         nums = [env.get_num(handle) for handle in handles]

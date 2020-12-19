@@ -1,11 +1,17 @@
 import dgl
 import math
+import os
 import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from collections import namedtuple
+
+class Color:
+    INFO = '\033[1;34m{}\033[0m'
+    WARNING = '\033[1;33m{}\033[0m'
+    ERROR = '\033[1;31m{}\033[0m'
 
 Transition = namedtuple('Transition', ('graph', 'action', 'reward', 'next_graph', 'done'))
 
@@ -27,14 +33,14 @@ class GraphBuffer(object):
         samples = random.sample(self.memory, batch_size)
 
         graphs = [sample[0] for sample in samples]
-        actions = [sample[1] for sample in samples]
-        rewards = [sample[2] for sample in samples]
+        actions = [torch.Tensor(sample[1]) for sample in samples]
+        rewards = [torch.Tensor(sample[2]) for sample in samples]
         next_graphs = [sample[3] for sample in samples]
         dones = [sample[4] for sample in samples]
 
         ret_graph = dgl.batch(graphs)
-        ret_action = torch.Tensor(actions).reshape(-1, 1)
-        ret_reward = torch.Tensor(rewards).reshape(-1)
+        ret_action = torch.cat(actions).reshape(-1, 1)
+        ret_reward = torch.cat(rewards).reshape(-1)
         ret_next_graph = dgl.batch(next_graphs)
         ret_dones = torch.Tensor(dones).reshape(-1)
 
@@ -169,3 +175,150 @@ class BayesMultiHeadGATLayer(nn.Module):
         self.KL_backward = torch.mean(torch.stack(KL))
         h = F.relu(torch.cat(hs, dim=1))
         return h, alpha
+
+class SummaryObj:
+    """Summary holder"""
+    def __init__(self, log_dir, log_name):
+        self.summary = dict()
+
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
+        self.log_path = os.path.join(log_dir, log_name)
+
+    def register(self, name_list):
+        """Register summary name and start writing
+
+        Parameters
+        ----------
+        name_list: list, contains name whose type is str
+        """
+        for name in name_list:
+            if name in self.summary.keys():
+                raise Exception("Name already exists: `{}`".format(name))
+            self.summary[name] = []
+            f = open(os.path.join(self.log_path, name+'.txt'), 'r')
+            f.close()
+
+    def write(self, summary_dict):
+        """Write summary
+
+        Parameters
+        ----------
+        summary_dict: dict, summary value dict
+        """
+        assert isinstance(summary_dict, dict)
+
+        for key, value in summary_dict.item():
+            if key not in self.summary.keys():
+                raise Exception("Undefined name: `{}`".format(key))
+            self.summary[key].append(value)
+            f = open(os.path.join(self.log_path, key+'.txt'), 'a')
+            f.write('%f\n' % float(value))
+            f.close()
+
+class Runner(object):
+    def __init__(self, env, handles, map_size, max_steps, models,
+                 play_handle, render_every=None, save_every=None, tau=None,
+                 log_name=None, log_dir=None, model_dir=None, train=False):
+        """Initialize runner
+        Parameters
+        ----------
+        env: magent.GridWorld
+            environment handle
+        handles: list
+            group handles
+        map_size: int
+            map size of grid world
+        max_steps: int
+            the maximum of stages in a episode
+        render_every: int
+            render environment interval
+        save_every: int
+            states the interval of evaluation for self-play update
+        models: list
+            contains models
+        play_handle: method like
+            run game
+        tau: float
+            tau index for self-play update
+        log_name: str
+            define the name of log dir
+        log_dir: str
+            donates the directory of logs
+        model_dir: str
+            donates the dircetory of models
+        """
+        self.env = env
+        self.models = models
+        self.max_steps = max_steps
+        self.handles = handles
+        self.map_size = map_size
+        self.render_every = render_every
+        self.save_every = save_every
+        self.play = play_handle
+        self.model_dir = model_dir
+        self.train = train
+        self.tau = tau
+
+        if self.train:
+            self.summary = SummaryObj(log_name=log_name, log_dir=log_dir)
+
+            summary_items = ['ave_agent_reward', 'total_reward', 'kill',
+                             "Sum_Reward", "Kill_Sum"]
+            self.summary.register(summary_items)  # summary register
+            self.summary_items = summary_items
+
+            if not os.path.exists(self.model_dir):
+                os.makedirs(self.model_dir)
+
+    def run(self, variant_eps, it, win_cnt=None):
+        info = {'main': None, 'oppo': None}
+
+        # pass
+        info['main'] = {'ave_agent_reward': 0., 'total_reward': 0., 'kill': 0.}
+        info['oppo'] = {'ave_agent_reward': 0., 'total_reward': 0., 'kill': 0.}
+
+        if self.render_every > 0:
+            render = (it + 1) % self.render_every
+        else:
+            render = False
+        rst = self.play(env=self.env, n_round=it, map_size=self.map_size,
+                        max_steps=self.max_steps, handles=self.handles,
+                        models=self.models, print_every=50, eps=variant_eps,
+                        render=render, train=self.train)
+        max_nums, nums, agent_r_records, total_rewards = rst
+        for i, tag in enumerate(['main', 'oppo']):
+            info[tag]['total_reward'] = total_rewards[i]
+            info[tag]['kill'] = max_nums[i] - nums[1 - i]
+            info[tag]['ave_agent_reward'] = agent_r_records[i]
+
+        if self.train:
+            print('\n[INFO] {}'.format(info['main']))
+
+            # if self.save_every and (it + 1) % self.save_every == 0:
+            if info['main']['total_reward'] > info['oppo']['total_reward']:
+                print(Color.INFO.format('\n[INFO] Begin self-play Update ...'))
+                # self-play: opponent update
+                for target, param in zip(self.models[1].conv_net.parameters(),
+                                         self.models[0].conv_net.parameters()):
+                    target.data = (1.-self.tau)*param.data + self.tau*target.data
+                for target, param in zip(self.models[1].q_net.parameters(),
+                                         self.models[0].q_net.parameters()):
+                    target.data = (1.-self.tau)*param.data + self.tau*target.data
+                print(Color.INFO.format('[INFO] Self-play Updated!\n'))
+
+                print(Color.INFO.format('[INFO] Saving model ...'))
+                self.models[0].save(self.model_dir + '-0', it)
+                self.models[1].save(self.model_dir + '-1', it)
+
+                self.summary.write(info['main'], it)
+        else:
+            print('\n[INFO] {0} \n {1}'.format(info['main'], info['oppo']))
+            if info['main']['kill'] > info['oppo']['kill']:
+                win_cnt['main'] += 1
+            elif info['main']['kill'] < info['oppo']['kill']:
+                win_cnt['oppo'] += 1
+            else:
+                win_cnt['main'] += 1
+                win_cnt['oppo'] += 1

@@ -38,10 +38,9 @@ class DGN_Conv(nn.Module):
         return out, alpha
 
 class DGNAgent(nn.Module):
-    def __init__(self, n_agents, obs_dim, act_dim, h_dim=128,
-                 num_heads=8, gamma=0.96, batch_size=10,
-                 buffer_size=2*1e5, epsilon=0.6, epsilon_min=0.01,
-                 decay_rate=0.996, lr=1e-4, neighbors=3,
+    def __init__(self, obs_dim, act_dim, h_dim=128,
+                 num_heads=8, gamma=0.95, batch_size=64,
+                 buffer_size=80000, lr=1e-4, neighbors=3,
                  lamb=0.03, beta=0.01, *args, **kwargs):
         super(DGNAgent, self).__init__()
         self.conv_net = DGN_Conv(obs_dim, h_dim, num_heads)
@@ -57,24 +56,18 @@ class DGNAgent(nn.Module):
         self.buffer = GraphBuffer(buffer_size)
         self.batch_size = batch_size
 
-        self.epsilon = epsilon
-        self.epsilon_min = epsilon_min
-        self.decay_rate = decay_rate
-
-        self.n_agents = n_agents
         self.n_act = act_dim
         self.n_neighbor = neighbors
         self.lamb = lamb
 
         self._new_add = 0
 
-    def act(self, graph):
-        if random.random() < self.epsilon:
-            action = torch.randint(0, self.n_act, size=(self.n_agents,))
+    def act(self, graph, epsilon):
+        if random.random() < epsilon:
+            action = torch.randint(0, self.n_act, size=(graph.num_nodes(),))
         else:
             q_value = self.q_net(graph)
             action = q_value.argmax(dim=-1).detach()
-        self.epsilon = max(self.epsilon*self.decay_rate, self.epsilon_min)
 
         return action.numpy()
 
