@@ -2,7 +2,7 @@ import argparse
 import os
 import magent
 
-from examples.battle_model.algo import dgn
+from examples.battle_model.algo import dgn, bayes_dgn
 from examples.battle_model.algo import dgn_tools
 from examples.battle_model.scenario import play
 
@@ -38,12 +38,15 @@ def spawn_ai(algo_name, env, handle, *args, **kwargs):
     act_dim = env.get_action_space(handle)[0]
     if algo_name == 'dgn':
         model = dgn.DGNAgent(obs_dim=obs_dim, act_dim=act_dim, **kwargs)
+    elif algo_name == 'bayes_dgn':
+        model = bayes_dgn.BayesDGNAgent(obs_dim=obs_dim, act_dim=act_dim,
+                                        **kwargs)
     return model
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--algo', type=str, choices={'dgn', 'bdgn'},
+    parser.add_argument('--algo', type=str, choices={'dgn', 'bayes_dgn'},
                         help='choose an algorithm from the preset',
                         required=True)
     parser.add_argument('--save_every', type=int, default=10,

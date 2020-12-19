@@ -148,7 +148,8 @@ class BayesGATLayer(nn.Module):
             KL = torch.zeros_like(out_weight)
         v = self.fc_v(nodes.mailbox['z'])
         h = torch.sum(out_weight * v, dim=1)
-        return {'h': h, 'alpha': alpha.squeeze(), 'kl': KL.mean(dim=1)}
+        # return {'h': h, 'alpha': alpha.squeeze(), 'kl': KL.mean(dim=1)}
+        return {'h': h, 'kl': KL.mean(dim=1)}
 
     def forward(self, g, z):
         g.ndata['z'] = z
@@ -156,11 +157,12 @@ class BayesGATLayer(nn.Module):
         g.update_all(self.message_func, self.reduce_func)
         self.KL_backward = g.ndata.pop('kl').mean()
         h = g.ndata.pop('h')
-        alpha = g.ndata.pop('alpha')
+        # alpha = g.ndata.pop('alpha')
         g.ndata.pop('z')
         g.edata.pop('e')
         g.edata.pop('p')
-        return h, alpha
+        # return h, alpha
+        return h
 
 class BayesMultiHeadGATLayer(nn.Module):
     def __init__(self, in_dim, out_dim, num_heads,
@@ -175,13 +177,15 @@ class BayesMultiHeadGATLayer(nn.Module):
         self.KL_backward = 0.
 
     def forward(self, g, h):
-        hs, alphas = map(list, zip(*[head(g, h)
-                                     for head in self.heads]))
-        alpha = torch.stack(alphas).mean(0)
+        # hs, alphas = map(list, zip(*[head(g, h)
+        #                              for head in self.heads]))
+        hs = [head(g, h) for head in self.heads]
+        # alpha = torch.stack(alphas).mean(0)
         KL = [head.KL_backward for head in self.heads]
         self.KL_backward = torch.mean(torch.stack(KL))
         h = F.relu(torch.cat(hs, dim=1))
-        return h, alpha
+        # return h, alpha
+        return h
 
 class SummaryObj:
     """Summary holder"""
