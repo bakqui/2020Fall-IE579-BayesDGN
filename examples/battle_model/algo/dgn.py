@@ -117,8 +117,8 @@ class DGNAgent(nn.Module):
                                  self.conv_net.parameters()):
             target.data = (1-self.beta)*target.data + self.beta*param.data
 
-        for target, param in zip(self.q_net.parameters(),
-                                 self.target_q.parameters()):
+        for target, param in zip(self.target_q.parameters(),
+                                 self.q_net.parameters()):
             target.data = (1-self.beta)*target.data + self.beta*param.data
 
     def save(self, dir_path, step=0):
