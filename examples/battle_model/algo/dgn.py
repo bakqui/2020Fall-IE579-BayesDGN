@@ -31,12 +31,15 @@ class DGN_Conv(nn.Module):
     def forward(self, graph):
         obs = graph.ndata['obs']
         z1 = self.encoder(obs)
-        z2, _ = self.conv1(graph, z1)
-        z3, alpha = self.conv2(graph, z2)
+        # z2, _ = self.conv1(graph, z1)
+        z2 = self.conv1(graph, z1)
+        # z3, alpha = self.conv2(graph, z2)
+        z3 = self.conv2(graph, z2)
         out = torch.cat([z1, z2, z3], dim=1)
-        if self.target:
-            return out
-        return out, alpha
+        # if self.target:
+        #     return out
+        # return out, alpha
+        return out
 
 class DGNAgent(nn.Module):
     def __init__(self, obs_dim, act_dim, h_dim=128,
@@ -73,9 +76,11 @@ class DGNAgent(nn.Module):
         return action.numpy().astype(np.int32)
 
     def get_q(self, graph):
-        z, weight = self.conv_net(graph)
+        # z, weight = self.conv_net(graph)
+        z = self.conv_net(graph)
         q = self.q_net(z)
-        return q, weight
+        # return q, weight
+        return q
 
     def get_target(self, graph):
         z = self.target_conv(graph)
@@ -90,15 +95,17 @@ class DGNAgent(nn.Module):
         batch_num = self._new_add * 2 // self.batch_size
         for _ in range(batch_num):
             state, act, reward, n_state, done = self.buffer.sample(self.batch_size)
-            curr_qs, curr_weight = self.get_q(state)
+            # curr_qs, curr_weight = self.get_q(state)
+            curr_qs = self.get_q(state)
             selected_qs = curr_qs.gather(1, act).reshape(-1)
             next_qs = self.get_target(n_state).max(dim=1)[0].detach()
             target = reward + self.gamma * next_qs * (1 - done)
 
-            _, next_weight = self.get_qs(n_state)
-            KL = (curr_weight * torch.log(curr_weight/next_weight)).sum(-1)
+            # _, next_weight = self.get_qs(n_state)
+            # KL = (curr_weight * torch.log(curr_weight/next_weight)).sum(-1)
 
-            loss = F.mse_loss(selected_qs, target) + self.lamb*KL.mean()
+            # loss = F.mse_loss(selected_qs, target) + self.lamb*KL.mean()
+            loss = F.mse_loss(selected_qs, target)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
