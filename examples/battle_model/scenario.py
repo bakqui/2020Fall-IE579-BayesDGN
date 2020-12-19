@@ -45,7 +45,7 @@ def get_edges(feature, n_agents, n_neighbor=3):
             distance = (dis[dst][0]-dis[src][0])**2+(dis[dst][1]-dis[src][1])**2
             f.append([distance, dst])
         f.sort(key=lambda x: x[0]) # sort w.r.t. distance
-        for order in range(n_neighbor+1):
+        for order in range(min(n_neighbor+1, n_agents)):
             from_idx.append(src)
             to_idx.append(f[order][1])
     return from_idx, to_idx
