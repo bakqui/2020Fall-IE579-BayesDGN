@@ -113,7 +113,6 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
 
         # simulate one step
         done = env.step()
-        dones = 
 
         for i in range(n_group):
             rewards[i] = env.get_reward(handles[i])
