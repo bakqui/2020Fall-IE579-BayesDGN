@@ -70,7 +70,7 @@ class DGNAgent(nn.Module):
         if random.random() < epsilon:
             action = torch.randint(0, self.n_act, size=(graph.num_nodes(),))
         else:
-            q_value = self.q_net(graph)
+            q_value = self.get_q(graph)
             action = q_value.argmax(dim=-1).detach()
 
         return action.numpy().astype(np.int32)
