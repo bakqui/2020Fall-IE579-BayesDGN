@@ -123,8 +123,10 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
             view, feature = env.get_observation(handles[i])
             state[i] = gen_graph(view, feature, n_neighbor)
             assert before_state[i].num_nodes() == state[i].num_nodes(), \
-                'Group {}: {} before / {} after'.format(i, before_state[i].num_nodes,
-                                                        state[i].num_nodes)
+                'Group {}: {} before / {} after,\nrew:{}, done:{}'.format(i, before_state[i].num_nodes(),
+                                                                          state[i].num_nodes(),
+                                                                          len(rewards[i]),
+                                                                          len(alives[i]))
 
         buffer = {
             'g': before_state[0], 'a': acts[0], 'r': rewards[0],
