@@ -207,11 +207,12 @@ class SummaryObj:
         for name in name_list:
             if name in self.summary.keys():
                 raise Exception("Name already exists: `{}`".format(name))
-            self.summary[name] = []
-            f = open(os.path.join(self.log_path, name+'.txt'), 'w')
-            f.close()
+            self.summary[name] = None
+            if not os.path.exists(os.path.join(self.log_path, name+'.txt')):
+                f = open(os.path.join(self.log_path, name+'.txt'), 'w')
+                f.close()
 
-    def write(self, summary_dict):
+    def write(self, summary_dict, step):
         """Write summary
 
         Parameters
@@ -223,9 +224,8 @@ class SummaryObj:
         for key, value in summary_dict.items():
             if key not in self.summary.keys():
                 raise Exception("Undefined name: `{}`".format(key))
-            self.summary[key].append(value)
             f = open(os.path.join(self.log_path, key+'.txt'), 'a')
-            f.write('%f\n' % float(value))
+            f.write('%d \t %f\n' % (step, float(value)))
             f.close()
 
 class Runner(object):
@@ -268,7 +268,6 @@ class Runner(object):
         self.render_every = render_every
         self.save_every = save_every
         self.play = play_handle
-        self.model_dir = model_dir
         self.train = train
         self.tau = tau
 
@@ -279,6 +278,12 @@ class Runner(object):
                              "Sum_Reward", "Kill_Sum"]
             self.summary.register(summary_items)  # summary register
             self.summary_items = summary_items
+            self.model_dir0 = model_dir + '-0'
+            if not os.path.exists(self.model_dir0):
+                os.makedirs(self.model_dir0)
+            self.model_dir1 = model_dir + '-1'
+            if not os.path.exists(self.model_dir1):
+                os.makedirs(self.model_dir1)
 
     def run(self, variant_eps, it, win_cnt=None):
         info = {'main': None, 'oppo': None}
@@ -318,16 +323,9 @@ class Runner(object):
 
                 print(Color.INFO.format('[INFO] Saving model ...'))
 
-                model_dir0 = self.model_dir + '-0'
-                if not os.path.exists(model_dir0):
-                    os.makedirs(model_dir0)
-                self.models[0].save(model_dir0, it)
-                model_dir1 = self.model_dir + '-1'
-                if not os.path.exists(model_dir1):
-                    os.makedirs(model_dir1)
-                self.models[1].save(model_dir1, it)
-
-                self.summary.write(info['main'])
+                self.models[0].save(self.model_dir0, it)
+                self.models[1].save(self.model_dir1, it)
+                self.summary.write(info['main'], it)
         else:
             print('\n[INFO] {0} \n {1}'.format(info['main'], info['oppo']))
             if info['main']['kill'] > info['oppo']['kill']:
