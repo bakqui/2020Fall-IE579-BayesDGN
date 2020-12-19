@@ -273,9 +273,6 @@ class Runner(object):
             self.summary.register(summary_items)  # summary register
             self.summary_items = summary_items
 
-            if not os.path.exists(self.model_dir):
-                os.makedirs(self.model_dir)
-
     def run(self, variant_eps, it, win_cnt=None):
         info = {'main': None, 'oppo': None}
 
@@ -313,8 +310,15 @@ class Runner(object):
                 print(Color.INFO.format('[INFO] Self-play Updated!\n'))
 
                 print(Color.INFO.format('[INFO] Saving model ...'))
-                self.models[0].save(self.model_dir + '-0', it)
-                self.models[1].save(self.model_dir + '-1', it)
+                
+                model_dir0 = self.model_dir + '-0'
+                if not os.path.exists(model_dir0):
+                    os.makedirs(model_dir0)
+                self.models[0].save(model_dir0, it)
+                model_dir1 = self.model_dir + '-1'
+                if not os.path.exists(model_dir1):
+                    os.makedirs(model_dir1)
+                self.models[1].save(model_dir1, it)
 
                 self.summary.write(info['main'], it)
         else:

@@ -122,13 +122,13 @@ class DGNAgent(nn.Module):
             target.data = (1-self.beta)*target.data + self.beta*param.data
 
     def save(self, dir_path, step=0):
-        file_path = os.path.join(dir_path, "dgn_{}".format(step))
+        file_path = os.path.join(dir_path, "dgn_{}.pt".format(step))
         torch.save({
             'conv_state_dict': self.conv_net.state_dict(),
             'q_state_dict': self.q_net.state_dict()}, file_path)
 
     def load(self, dir_path, step=0):
-        file_path = os.path.join(dir_path, "dgn_{}".format(step))
+        file_path = os.path.join(dir_path, "dgn_{}.pt".format(step))
         checkpoint = torch.load(file_path)
         self.q_net.load_state_dict(checkpoint['q_state_dict'])
         self.conv_net.load_state_dict(checkpoint['conv_state_dict'])
