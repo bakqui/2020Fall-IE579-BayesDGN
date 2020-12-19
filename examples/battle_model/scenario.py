@@ -125,7 +125,7 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
 
         buffer = {
             'g': before_state[0], 'a': acts[0], 'r': rewards[0],
-            'n_g': state[0], 't': ~alives[i]
+            'n_g': state[0], 't': ~alives[0]
         }
 
         # save experience
