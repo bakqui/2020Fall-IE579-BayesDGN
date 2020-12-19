@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dgn_tools import GraphBuffer, MultiHeadDotGATLayer
+from .dgn_tools import GraphBuffer, MultiHeadDotGATLayer
 from torch.optim import Adam
 
 class ObsEncoder(nn.Module):
@@ -49,7 +49,7 @@ class DGNAgent(nn.Module):
         self.target_q = nn.Linear(3*h_dim, act_dim)
         self.target_conv.load_state_dict(self.conv_net.state_dict())
         self.target_q.load_state_dict(self.q_net.state_dict())
-        self.optimizer = Adam(self.conv_net.parameters()+self.q_net.parameters(),
+        self.optimizer = Adam(list(self.conv_net.parameters())+list(self.q_net.parameters()),
                               lr=lr)
         self.beta = beta
         self.gamma = gamma
