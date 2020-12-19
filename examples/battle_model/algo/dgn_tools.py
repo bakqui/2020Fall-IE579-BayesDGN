@@ -213,7 +213,7 @@ class SummaryObj:
         """
         assert isinstance(summary_dict, dict)
 
-        for key, value in summary_dict.item():
+        for key, value in summary_dict.items():
             if key not in self.summary.keys():
                 raise Exception("Undefined name: `{}`".format(key))
             self.summary[key].append(value)
