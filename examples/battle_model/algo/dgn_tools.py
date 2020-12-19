@@ -184,7 +184,7 @@ class SummaryObj:
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
 
-        self.log_path = os.path.join(log_dir, log_name)
+        self.log_path = log_dir
 
     def register(self, name_list):
         """Register summary name and start writing
@@ -197,7 +197,7 @@ class SummaryObj:
             if name in self.summary.keys():
                 raise Exception("Name already exists: `{}`".format(name))
             self.summary[name] = []
-            f = open(os.path.join(self.log_path, name+'.txt'), 'r')
+            f = open(os.path.join(self.log_path, name+'.txt'), 'w')
             f.close()
 
     def write(self, summary_dict):
