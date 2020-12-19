@@ -85,7 +85,7 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
 
     n_group = len(handles)
     state = [None for _ in range(n_group)]
-    before_state = [None for _ in range(n_group)]
+    next_state = [None for _ in range(n_group)]
     acts = [None for _ in range(n_group)]
 
     alives = [None for _ in range(n_group)]
@@ -98,15 +98,13 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
     total_rewards = [[] for _ in range(n_group)]
 
     # get graph from observation of each group
-    for i in range(n_group):
-        view, feature = env.get_observation(handles[i])
-        state[i] = gen_graph(view, feature, n_neighbor)
 
     while not done and step_ct < max_steps:
         # take actions for every group
         for i in range(n_group):
+            view, feature = env.get_observation(handles[i])
+            state[i] = gen_graph(view, feature, n_neighbor)
             acts[i] = models[i].act(graph=state[i], epsilon=eps)
-            before_state[i] = state[i]
 
         for i in range(n_group):
             env.set_action(handles[i], acts[i])
@@ -117,20 +115,12 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
         for i in range(n_group):
             rewards[i] = env.get_reward(handles[i])
             alives[i] = env.get_alive(handles[i])
-
-        # next graph
-        for i in range(n_group):
             view, feature = env.get_observation(handles[i])
-            state[i] = gen_graph(view, feature, n_neighbor)
-            assert before_state[i].num_nodes() == state[i].num_nodes(), \
-                'Group {}: {} before / {} after,\nrew:{}, done:{}'.format(i, before_state[i].num_nodes(),
-                                                                          state[i].num_nodes(),
-                                                                          len(rewards[i]),
-                                                                          len(alives[i]))
+            next_state[i] = gen_graph(view, feature, n_neighbor)
 
         buffer = {
-            'g': before_state[0], 'a': acts[0], 'r': rewards[0],
-            'n_g': state[0], 't': ~alives[0]
+            'g': state[0], 'a': acts[0], 'r': rewards[0],
+            'n_g': next_state[0], 't': ~alives[0]
         }
 
         # save experience
