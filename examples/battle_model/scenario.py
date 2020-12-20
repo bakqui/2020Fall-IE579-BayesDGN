@@ -159,7 +159,7 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
 
     return max_nums, nums, mean_rewards, total_rewards
 
-
+# play with learned models (evaluate agents with different models)
 def battle(env, n_round, map_size, max_steps, handles, models, eps,
            print_every, n_neighbor=3, render=False):
     """play a ground"""
@@ -187,8 +187,6 @@ def battle(env, n_round, map_size, max_steps, handles, models, eps,
         for i in range(n_group):
             view, feature = env.get_observation(handles[i])
             state[i] = gen_graph(view, feature, n_neighbor)
-
-        for i in range(n_group):
             acts[i] = models[i].act(graph=state[i], epsilon=eps)
 
         for i in range(n_group):
