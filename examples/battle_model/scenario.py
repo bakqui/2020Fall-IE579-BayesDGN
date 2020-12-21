@@ -57,15 +57,16 @@ def observation(view, feature, n_agents):
                               feature[j][-1:-3:-1])))
     return obs
 
-def gen_graph(view, feature, n_neighbor=3):
+def gen_graph(view, feature, n_neighbor=3, g=None):
     """get state as a graph"""
-    g = dgl.DGLGraph()
+    if g is None:
+        g = dgl.DGLGraph()
 
-    n_agents = len(feature)
-    g.add_nodes(n_agents)
+        n_agents = len(feature)
+        g.add_nodes(n_agents)
 
-    from_idx, to_idx = get_edges(feature, n_agents, n_neighbor)
-    g.add_edges(from_idx, to_idx)
+        from_idx, to_idx = get_edges(feature, n_agents, n_neighbor)
+        g.add_edges(from_idx, to_idx)
 
     # we save observation as the feature of the nodes
     obs = observation(view, feature, n_agents)
@@ -116,7 +117,7 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
             rewards[i] = env.get_reward(handles[i])
             alives[i] = env.get_alive(handles[i])
             view, feature = env.get_observation(handles[i])
-            next_state[i] = gen_graph(view, feature, n_neighbor)
+            next_state[i] = gen_graph(view, feature, n_neighbor, state[i])
 
         buffer = {
             'g': state[0], 'a': acts[0], 'r': rewards[0],
