@@ -59,10 +59,10 @@ def observation(view, feature, n_agents):
 
 def gen_graph(view, feature, n_neighbor=3, g=None):
     """get state as a graph"""
+    n_agents = len(feature)
     if g is None:
         g = dgl.DGLGraph()
 
-        n_agents = len(feature)
         g.add_nodes(n_agents)
 
         from_idx, to_idx = get_edges(feature, n_agents, n_neighbor)
