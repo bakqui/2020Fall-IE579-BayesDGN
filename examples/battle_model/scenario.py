@@ -161,7 +161,7 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
 
 # play with learned models (evaluate agents with different models)
 def battle(env, n_round, map_size, max_steps, handles, models, eps,
-           print_every, n_neighbor=3, render=False):
+           print_every, n_neighbor=3, render=False, train=False):
     """play a ground"""
     env.reset()
     generate_map(env, map_size, handles)
