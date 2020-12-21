@@ -4,7 +4,7 @@ import magent
 
 from examples.battle_model.algo import dgn, bayes_dgn
 from examples.battle_model.algo import dgn_tools
-from examples.battle_model.senario import battle
+from examples.battle_model.scenario import battle
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
