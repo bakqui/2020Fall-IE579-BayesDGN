@@ -69,8 +69,8 @@ if __name__ == '__main__':
                                     'examples/battle_model', 'build/render'))
     handles = env.get_handles()
 
-    log_dir = os.path.join(BASE_DIR, 'data/tmp/{}'.format(args.algo))
-    model_dir = os.path.join(BASE_DIR, 'data/models/{}'.format(args.algo))
+    log_dir = os.path.join(BASE_DIR, 'data/tmp/real/{}'.format(args.algo))
+    model_dir = os.path.join(BASE_DIR, 'data/models/real/{}'.format(args.algo))
     start_from = 0
 
     models = [spawn_ai(args.algo, env, handles[0]),

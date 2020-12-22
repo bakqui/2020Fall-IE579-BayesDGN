@@ -50,14 +50,19 @@ def get_edges(feature, n_agents, n_neighbor=3):
             to_idx.append(f[order][1])
     return from_idx, to_idx
 
-def observation(view, feature, n_agents):
+def observation(view, feature, n_agents, group):
     obs = []
-    for j in range(n_agents):
-        obs.append(np.hstack(((view[j][:, :, 1]-view[j][:, :, 5]).flatten(),
-                              feature[j][-1:-3:-1])))
+    if group == 0:
+        for j in range(n_agents):
+            obs.append(np.hstack(((view[j][:, :, 1]-view[j][:, :, 5]).flatten(),
+                                  feature[j][-1:-3:-1])))
+    else:
+        for j in range(n_agents):
+            obs.append(np.hstack(((view[j][:, :, 4]-view[j][:, :, 2]).flatten(),
+                                  feature[j][-1:-3:-1])))
     return obs
 
-def gen_graph(view, feature, n_neighbor=3, g=None):
+def gen_graph(view, feature, n_neighbor, group, g=None):
     """get state as a graph"""
     n_agents = len(feature)
     if g is None:
@@ -69,7 +74,7 @@ def gen_graph(view, feature, n_neighbor=3, g=None):
         g.add_edges(from_idx, to_idx)
 
     # we save observation as the feature of the nodes
-    obs = observation(view, feature, n_agents)
+    obs = observation(view, feature, group, n_agents)
     g.ndata['obs'] = torch.Tensor(obs) # shape = (n_agents, view_size**2 + 2)
 
     return g
@@ -104,7 +109,7 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
         # take actions for every group
         for i in range(n_group):
             view, feature = env.get_observation(handles[i])
-            state[i] = gen_graph(view, feature, n_neighbor)
+            state[i] = gen_graph(view, feature, n_neighbor, i)
             acts[i] = models[i].act(graph=state[i], epsilon=eps)
 
         for i in range(n_group):
@@ -117,7 +122,7 @@ def play(env, n_round, map_size, max_steps, handles, models, eps,
             rewards[i] = env.get_reward(handles[i])
             alives[i] = env.get_alive(handles[i])
             view, feature = env.get_observation(handles[i])
-            next_state[i] = gen_graph(view, feature, n_neighbor, state[i])
+            next_state[i] = gen_graph(view, feature, n_neighbor, i, state[i])
 
         buffer = {
             'g': state[0], 'a': acts[0], 'r': rewards[0],
@@ -187,7 +192,7 @@ def battle(env, n_round, map_size, max_steps, handles, models, eps,
         # take actions for every model
         for i in range(n_group):
             view, feature = env.get_observation(handles[i])
-            state[i] = gen_graph(view, feature, n_neighbor)
+            state[i] = gen_graph(view, feature, n_neighbor, i)
             acts[i] = models[i].act(graph=state[i], epsilon=eps)
 
         for i in range(n_group):
